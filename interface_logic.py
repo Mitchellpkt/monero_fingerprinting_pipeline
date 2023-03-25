@@ -8,13 +8,14 @@ import numpy as np
 import requests
 from loguru import logger
 from pydantic import BaseModel
+import pandas as pd
 
 
 @dataclass
 class JsonRpcClient:
     verbose: bool = True
 
-    def __init__(self, url: str, port: int, verbose: bool, **_):
+    def __init__(self, /, url: str, port: int, verbose: bool = True, **_):
         if self.verbose:
             logger.info(f"Initializing JSON-RPC client with URL {url} and port {port}")
         self.url = url
@@ -54,7 +55,8 @@ class JsonRpcClient:
 
 
 class ConnectionConfig(BaseModel):
-    """ This is the configuration for a connection to a Monero node """
+    """This is the configuration for a connection to a Monero node"""
+
     # Must include URL and port at initialization
     url: str
     port: int
@@ -85,26 +87,28 @@ class ConnectionConfig(BaseModel):
             logger.info(f"ConnectionConfig saved to {json_file}")
 
 
-def load_connection_config_from_json_file(json_file: Union[pathlib.Path, str],
-                                          verbose: bool = True) -> ConnectionConfig:
+def load_connection_config_from_json_file(
+    json_file: Union[pathlib.Path, str], verbose: bool = True
+) -> ConnectionConfig:
     if not pathlib.Path(json_file).exists():
         raise FileNotFoundError(f"File {json_file} not found")
     with open(json_file, "r") as f:
         connection_config_dict = json.load(f)
-    logger.info(f"ConnectionConfig loaded from {json_file}")
+    if verbose:
+        logger.info(f"ConnectionConfig loaded from {json_file}")
     return ConnectionConfig(**connection_config_dict)
 
 
-def return_json_rpc_client(
-        rpc_client: Union[JsonRpcClient, ConnectionConfig]
-) -> JsonRpcClient:
-    """ Helper function to make other inputs more flexible, ingests either a JsonRpcClient or a ConnectionConfig"""
+def return_json_rpc_client(rpc_client: Union[JsonRpcClient, ConnectionConfig]) -> JsonRpcClient:
+    """Helper function to make other inputs more flexible, ingests either a JsonRpcClient or a ConnectionConfig"""
     if isinstance(rpc_client, ConnectionConfig):
         return rpc_client.json_rpc_client
     elif isinstance(rpc_client, JsonRpcClient):
         return rpc_client
     else:
-        raise TypeError(f"Unknown input type {type(rpc_client)=}; please provide JsonRpcClient or ConnectionConfig")
+        raise TypeError(
+            f"Unknown input type {type(rpc_client)=}; please provide JsonRpcClient or ConnectionConfig"
+        )
 
 
 def get_block_count(rpc_client: Union[JsonRpcClient, ConnectionConfig]) -> int:
@@ -118,13 +122,13 @@ def get_block(rpc_client: Union[JsonRpcClient, ConnectionConfig], height: int) -
 
 
 def get_transactions_raw(
-        txs_hashes: List[str],
-        url: str,
-        port: int,
-        decode_as_json: bool = True,
-        prune: bool = True,
-        split: bool = True,
-        *_,
+    txs_hashes: List[str],
+    url: str,
+    port: int,
+    decode_as_json: bool = True,
+    prune: bool = True,
+    split: bool = True,
+    *_,
 ) -> Dict[str, Any]:
     """
     Retrieve rawish transactions data from a Monero node.
@@ -201,7 +205,10 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
 
 
 def get_transactions_over_height_range_single_core(
-        connection_config: ConnectionConfig, start_height: int, end_height: int, verbose: bool = True,
+    connection_config: ConnectionConfig,
+    start_height: int,
+    end_height: int,
+    verbose: bool = True,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve transaction data from a Monero node over a range of block heights.
@@ -224,7 +231,11 @@ def get_transactions_over_height_range_single_core(
 
 
 def get_transactions_over_height_range(
-        connection_config: ConnectionConfig, start_height: int, end_height: int, verbose: bool = True,
+    connection_config: ConnectionConfig,
+    start_height: int,
+    end_height: int,
+    verbose: bool = True,
+    save_to_csv: Optional[Union[str, pathlib.Path]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve rawish transactions data from a Monero node over a range of block heights.
@@ -233,19 +244,53 @@ def get_transactions_over_height_range(
     :param start_height: starting block height
     :param end_height: ending block height
     :param verbose: whether to display a progress bar
+    :param save_to_csv: if provided, save the data to a csv file
     :return: rawish transaction data sent back by the node
     """
     if verbose:
         logger.info(f"Processing blocks {start_height} to {end_height} with {connection_config.num_workers}")
 
     # Break up the height range into num_workers number of chunks as evenly as possible
-    height_range_iterables = [(x[0], x[-1]) for x in
-                              np.array_split(range(start_height, end_height + 1), connection_config.num_workers)]
+    height_range_iterables = [
+        (x[0], x[-1])
+        for x in np.array_split(range(start_height, end_height + 1), connection_config.num_workers)
+    ]
 
     with Pool(connection_config.num_workers) as p:
         txs_data_nested: List[List[Dict[str, Any]]] = p.starmap(
             get_transactions_over_height_range_single_core,
-            [(connection_config, start_height, end_height, verbose) for start_height, end_height in
-             height_range_iterables],
+            [
+                (connection_config, start_height, end_height, verbose)
+                for start_height, end_height in height_range_iterables
+            ],
         )
-    return [tx for txs in txs_data_nested for tx in txs]
+    transactions: List[Dict[str, Any]] = [tx for txs in txs_data_nested for tx in txs]
+    if save_to_csv is not None:
+        transactions_to_dataframe(
+            transactions, save_to_csv=save_to_csv, verbose=verbose, return_df=False
+        )  # This saves it to a CSV file
+    return transactions
+
+
+def transactions_to_dataframe(
+    txs_data: List[Dict[str, Any]],
+    save_to_csv: Optional[Union[str, pathlib.Path]] = None,
+    verbose: bool = True,
+    return_df: bool = True,
+) -> Optional[pd.DataFrame]:
+    """
+    Convert transaction data to a Pandas DataFrame.
+
+    :param txs_data: transaction data (list of dicts, 1 element per transaction)
+    :param save_to_csv: optional path to save the data as a CSV file
+    :param verbose: whether to display a progress bar
+    :return: Pandas DataFrame
+    """
+    df: pd.DataFrame = pd.DataFrame(txs_data)
+    if save_to_csv is not None:
+        pathlib.Path(save_to_csv).parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(save_to_csv, index=False)
+        if verbose:
+            logger.info(f"Saved to {save_to_csv}")
+    if return_df:
+        return df

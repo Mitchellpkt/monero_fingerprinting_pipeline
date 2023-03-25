@@ -2,3 +2,4 @@ loguru
 requests
 pydantic
 numpy
+pandas
