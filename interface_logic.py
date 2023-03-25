@@ -225,7 +225,9 @@ def get_transactions_over_height_range_single_core(
     """
 
     txs_hashes = []
-    for height in range(start_height, end_height + 1):
+    heights: List[int] = list(range(start_height, end_height + 1))
+    p_blocks = tqdm(heights, desc="Retrieving block data ", total=len(heights)) if verbose else heights
+    for height in p_blocks:
         if verbose:
             logger.info(f"Processing block {height}", end="\r")
         block = get_block(connection_config, height)
@@ -250,12 +252,12 @@ def get_transactions_over_height_range_single_core(
         list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
     )
     result: List[Dict[str, Any]] = []
-    p = (
-        tqdm(txs_hash_batches, desc="Core transaction pagination", total=len(txs_hash_batches))
+    p_txns = (
+        tqdm(txs_hash_batches, desc="Core transaction pagination ", total=len(txs_hash_batches))
         if verbose
         else txs_hash_batches
     )
-    for txs_hash_batch in p:
+    for txs_hash_batch in p_txns:
         result.extend(
             extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
         )
