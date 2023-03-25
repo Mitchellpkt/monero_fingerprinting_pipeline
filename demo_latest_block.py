@@ -7,7 +7,7 @@ from interface_logic import (
     JsonRpcClient,
     get_block_count,
     get_block,
-    get_transactions,
+    get_transactions_raw,
     extract_transactions_data,
 )
 
@@ -47,7 +47,7 @@ def main():
     # Retrieve transactions for the latest block
     if args.verbose:
         logger.info("... About to retrieve transactions for the latest block (height: {block_count - 1})")
-    raw_transactions = get_transactions(
+    raw_transactions = get_transactions_raw(
         txs_hashes=transactions_hashes,
         url=args.url,
         port=args.port,

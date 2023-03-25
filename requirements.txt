@@ -1,2 +1,4 @@
 loguru
 requests
+pydantic
+numpy
