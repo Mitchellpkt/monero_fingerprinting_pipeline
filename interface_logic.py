@@ -2,7 +2,7 @@ import json
 import pathlib
 from dataclasses import dataclass
 from multiprocessing import Pool, cpu_count
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, Tuple
 
 import numpy as np
 import requests
@@ -63,7 +63,8 @@ class ConnectionConfig(BaseModel):
     port: int
     verbose: bool = True
     num_workers: int = 16
-    sleep_for_rate_limiting_sec: Optional[float] = None
+    sleep_for_rate_limiting_sec: Optional[float] = 0.1
+    transaction_batch_size: int = 250
 
     # Internally-managed
     full_url: str = None
@@ -232,7 +233,22 @@ def get_transactions_over_height_range_single_core(
         if "tx_hashes" in block and len(block["tx_hashes"]):
             txs_hashes.extend(block["tx_hashes"])
 
-    return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
+    # If no batching, or batch > hashes, return in a single shot
+    if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
+        txs_hashes
+    ):
+        return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
+
+    # Use np.array_split to chunk up the hashes into batches
+    txs_hash_batches = (list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size))
+    result: List[Dict[str, Any]] = []
+    for txs_hash_batch in txs_hash_batches:
+        result.extend(
+            extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
+        )
+        if connection_config.sleep_for_rate_limiting_sec:
+            time.sleep(connection_config.sleep_for_rate_limiting_sec)
+    return result
 
 
 def get_transactions_over_height_range(
