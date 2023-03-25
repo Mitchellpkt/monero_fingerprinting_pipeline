@@ -190,6 +190,15 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
         block_timestamp = tx["block_timestamp"]
         json_data = json.loads(tx["as_json"])
 
+        # RingCT transactions have a different structure, so we pull those fields out first if present
+        if "rct_signatures" in json_data:
+            rct_dict: Dict[str, Any] = {
+                "txn_fee_atomic": json_data["rct_signatures"]["txnFee"],
+                "rct_type": json_data["rct_signatures"]["type"],
+            }
+        else:
+            rct_dict: Dict[str, Any] = {}
+
         extracted_data.append(
             {
                 "tx_hash": tx_hash,
@@ -199,9 +208,8 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
                 "unlock_time": json_data["unlock_time"],
                 "num_inputs": len(json_data["vin"]),
                 "num_outputs": len(json_data["vout"]),
-                "txn_fee_atomic": json_data["rct_signatures"]["txnFee"],
-                "rct_type": json_data["rct_signatures"]["type"],
                 "extra": json_data["extra"],
+                **rct_dict,
             }
         )
 
