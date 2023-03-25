@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel
 import pandas as pd
 import time
+from tqdm.auto import tqdm
 
 
 @dataclass
@@ -207,56 +208,6 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
     return extracted_data
 
 
-#
-# def get_transactions_over_height_range_single_core(
-#     connection_config: ConnectionConfig,
-#     start_height: int,
-#     end_height: int,
-#     verbose: bool = True,
-# ) -> List[Dict[str, Any]]:
-#     """
-#     Retrieve transaction data from a Monero node over a range of block heights.
-#
-#     :param connection_config: The ConnectionConfig class above
-#     :param start_height: starting block height
-#     :param end_height: ending block height
-#     :param verbose: whether to display a progress bar
-#     :return: transaction data sent back by the node (list of dicts, 1 element per transaction)
-#     """
-#
-#     txs_hashes = []
-#     for height in range(start_height, end_height + 1):
-#         if verbose:
-#             logger.info(f"Processing block {height}", end="\r")
-#         block = get_block(connection_config, height)
-#         if connection_config.sleep_for_rate_limiting_sec:
-#             time.sleep(connection_config.sleep_for_rate_limiting_sec)
-#         if "tx_hashes" in block and len(block["tx_hashes"]):
-#             txs_hashes.extend(block["tx_hashes"])
-#
-#     if verbose:
-#         logger.info(
-#             f"About to retrieve {len(txs_hashes)} transactions from blocks {start_height} to {end_height}"
-#         )
-#
-#     # If no batching, or batch > hashes, return in a single shot
-#     if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
-#         txs_hashes
-#     ):
-#         return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
-#
-#     # Use np.array_split to chunk up the hashes into batches
-#     txs_hash_batches = (list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size))
-#     result: List[Dict[str, Any]] = []
-#     for txs_hash_batch in txs_hash_batches:
-#         result.extend(
-#             extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
-#         )
-#         if connection_config.sleep_for_rate_limiting_sec:
-#             time.sleep(connection_config.sleep_for_rate_limiting_sec)
-#     return result
-
-
 def get_transactions_over_height_range_single_core(
     connection_config: ConnectionConfig,
     start_height: int,
@@ -273,51 +224,101 @@ def get_transactions_over_height_range_single_core(
     :return: transaction data sent back by the node (list of dicts, 1 element per transaction)
     """
 
-    result: List[Dict[str, Any]] = []
+    txs_hashes = []
     for height in range(start_height, end_height + 1):
         if verbose:
             logger.info(f"Processing block {height}", end="\r")
         block = get_block(connection_config, height)
         if connection_config.sleep_for_rate_limiting_sec:
             time.sleep(connection_config.sleep_for_rate_limiting_sec)
+        if "tx_hashes" in block and len(block["tx_hashes"]):
+            txs_hashes.extend(block["tx_hashes"])
 
-        if "tx_hashes" not in block:
-            continue
-        if not len(block["tx_hashes"]):
-            continue
-
-        txs_hashes = block["tx_hashes"]
-
-        if verbose:
-            logger.info(
-                f"About to retrieve {len(txs_hashes)} transactions from blocks {start_height} to {end_height}"
-            )
-
-        # If no transaction batching, or batch size > request size, return in a single shot
-        if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
-            txs_hashes
-        ):
-            result.extend(
-                extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
-            )
-
-        # In the event of multiple batches, use np.array_split to chunk up the hashes into batches
-        txs_hash_batches = (
-            list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
+    if verbose:
+        logger.info(
+            f"About to retrieve {len(txs_hashes)} transactions from blocks {start_height} to {end_height}"
         )
-        for txs_hash_batch in txs_hash_batches:
-            raw_txs = get_transactions_raw(txs_hash_batch, **connection_config.dict())
-            # Debug
-            try:
-                extracted_data = extract_transactions_data(raw_txs)
-            except Exception as e:
-                logger.error(f"Height {height}: Error extracting data from\n{txs_hash_batches=}\n{raw_txs=}")
-                raise e
-            result.extend(extracted_data)
-            if connection_config.sleep_for_rate_limiting_sec:
-                time.sleep(connection_config.sleep_for_rate_limiting_sec)
 
+    # If no batching, or batch > hashes, return in a single shot
+    if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
+        txs_hashes
+    ):
+        return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
+
+    # Use np.array_split to chunk up the hashes into batches
+    txs_hash_batches = (list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size))
+    result: List[Dict[str, Any]] = []
+    p = tqdm(txs_hash_batches, desc="Core transaction pagination") if verbose else txs_hash_batches
+    for txs_hash_batch in p:
+        result.extend(
+            extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
+        )
+        if connection_config.sleep_for_rate_limiting_sec:
+            time.sleep(connection_config.sleep_for_rate_limiting_sec)
     return result
+
+
+# def get_transactions_over_height_range_single_core(
+#     connection_config: ConnectionConfig,
+#     start_height: int,
+#     end_height: int,
+#     verbose: bool = True,
+# ) -> List[Dict[str, Any]]:
+#     """
+#     Retrieve transaction data from a Monero node over a range of block heights.
+#
+#     :param connection_config: The ConnectionConfig class above
+#     :param start_height: starting block height
+#     :param end_height: ending block height
+#     :param verbose: whether to display a progress bar
+#     :return: transaction data sent back by the node (list of dicts, 1 element per transaction)
+#     """
+#
+#     result: List[Dict[str, Any]] = []
+#     for height in range(start_height, end_height + 1):
+#         if verbose:
+#             logger.info(f"Processing block {height}", end="\r")
+#         block = get_block(connection_config, height)
+#         if connection_config.sleep_for_rate_limiting_sec:
+#             time.sleep(connection_config.sleep_for_rate_limiting_sec)
+#
+#         if "tx_hashes" not in block:
+#             continue
+#         if not len(block["tx_hashes"]):
+#             continue
+#
+#         txs_hashes = block["tx_hashes"]
+#
+#         if verbose:
+#             logger.info(
+#                 f"About to retrieve {len(txs_hashes)} transactions from blocks {start_height} to {end_height}"
+#             )
+#
+#         # If no transaction batching, or batch size > request size, return in a single shot
+#         if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
+#             txs_hashes
+#         ):
+#             result.extend(
+#                 extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
+#             )
+#
+#         # In the event of multiple batches, use np.array_split to chunk up the hashes into batches
+#         txs_hash_batches = (
+#             list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
+#         )
+#         for txs_hash_batch in txs_hash_batches:
+#             raw_txs = get_transactions_raw(txs_hash_batch, **connection_config.dict())
+#             # Debug
+#             try:
+#                 extracted_data = extract_transactions_data(raw_txs)
+#             except Exception as e:
+#                 logger.error(f"Height {height}: Error extracting data from\n{txs_hash_batches=}\n{raw_txs=}")
+#                 raise e
+#             result.extend(extracted_data)
+#             if connection_config.sleep_for_rate_limiting_sec:
+#                 time.sleep(connection_config.sleep_for_rate_limiting_sec)
+#
+#     return result
 
 
 def get_transactions_over_height_range(

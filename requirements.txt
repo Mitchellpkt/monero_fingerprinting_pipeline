@@ -3,3 +3,4 @@ requests
 pydantic
 numpy
 pandas
+tqdm
