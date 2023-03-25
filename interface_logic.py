@@ -207,6 +207,7 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
     return extracted_data
 
 
+#
 # def get_transactions_over_height_range_single_core(
 #     connection_config: ConnectionConfig,
 #     start_height: int,
@@ -304,7 +305,6 @@ def get_transactions_over_height_range_single_core(
         txs_hash_batches = (
             list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
         )
-        result: List[Dict[str, Any]] = []
         for txs_hash_batch in txs_hash_batches:
             result.extend(
                 extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
