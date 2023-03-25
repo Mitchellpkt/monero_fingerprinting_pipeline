@@ -306,9 +306,14 @@ def get_transactions_over_height_range_single_core(
             list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
         )
         for txs_hash_batch in txs_hash_batches:
-            result.extend(
-                extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
-            )
+            raw_txs = get_transactions_raw(txs_hash_batch, **connection_config.dict())
+            # Debug
+            try:
+                extracted_data = extract_transactions_data(raw_txs)
+            except Exception as e:
+                logger.error(f"Height {height}: Error extracting data from\n{txs_hash_batches=}\n{raw_txs=}")
+                raise e
+            result.extend(extracted_data)
             if connection_config.sleep_for_rate_limiting_sec:
                 time.sleep(connection_config.sleep_for_rate_limiting_sec)
 
