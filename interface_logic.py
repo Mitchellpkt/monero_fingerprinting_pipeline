@@ -225,14 +225,9 @@ def get_transactions_over_height_range_single_core(
         if verbose:
             print(f"Processing block {height}", end="\r")
         block = get_block(connection_config, height)
-        # For debugging:
-        try:
+        if "tx_hashes" in block and len(block["tx_hashes"]):
             txs_hashes.extend(block["tx_hashes"])
-        except KeyError as e:
-            logger.info(f"Block {height} could not be processed")
-            logger.info(f"Block data: {block}")
-            logger.info(f"Error: {e}")
-            raise e
+
     return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
 
 
