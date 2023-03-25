@@ -1,9 +1,10 @@
 from interface_logic import RunConfig
 import server_config
 from loguru import logger
+from time import perf_counter
 
 logger.info("Starting ring size 16 era run...")
-
+tic: float = perf_counter()
 r = RunConfig(
     url=server_config.url,  # Replace these with your URL and port
     port=server_config.port,  # Replace these with your URL and port
@@ -14,5 +15,4 @@ r = RunConfig(
     save_to_csv="/home/user/isthmus_dev/output/rs16_era.csv",
     run_on_init=True,
 )
-
-logger.info("\nDone!")
+logger.info(f"\nDone! Took {perf_counter() - tic:.2f} seconds to run.")
