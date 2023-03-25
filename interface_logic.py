@@ -246,9 +246,15 @@ def get_transactions_over_height_range_single_core(
         return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
 
     # Use np.array_split to chunk up the hashes into batches
-    txs_hash_batches = (list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size))
+    txs_hash_batches = list(
+        list(x) for x in np.array_split(txs_hashes, connection_config.transaction_batch_size)
+    )
     result: List[Dict[str, Any]] = []
-    p = tqdm(txs_hash_batches, desc="Core transaction pagination") if verbose else txs_hash_batches
+    p = (
+        tqdm(txs_hash_batches, desc="Core transaction pagination", total=len(txs_hash_batches))
+        if verbose
+        else txs_hash_batches
+    )
     for txs_hash_batch in p:
         result.extend(
             extract_transactions_data(get_transactions_raw(txs_hash_batch, **connection_config.dict()))
