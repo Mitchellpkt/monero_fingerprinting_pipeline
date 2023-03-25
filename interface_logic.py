@@ -12,15 +12,15 @@ import pandas as pd
 
 
 @dataclass
-class JsonRpcClient:
+class JsonRpcClient(BaseModel):
+    url: str
+    port: int
     verbose: bool = True
 
-    def __init__(self, /, url: str, port: int, verbose: bool = True, **_):
+    def __init__(self, **data):
+        super().__init__(**data)
         if self.verbose:
-            logger.info(f"Initializing JSON-RPC client with URL {url} and port {port}")
-        self.url = url
-        self.port = port
-        self.verbose = verbose
+            logger.info(f"Initializing JSON-RPC client with URL {self.url} and port {self.port}")
 
     def _send_request(self, method: str, params: dict) -> dict:
         if self.verbose:
@@ -80,11 +80,11 @@ class ConnectionConfig(BaseModel):
         super().__init__(**data)
         self.setup()
 
-    def to_connection_config_json_file(self, json_file: Union[pathlib.Path, str], verbose: bool = True):
-        with open(json_file, "w") as f:
-            json.dump(self.dict(), f)
+    def to_connection_config_json_file(self, json_file_path: Union[pathlib.Path, str], verbose: bool = True):
+        with open(json_file_path, "w") as f:
+            json.dump(self.dict(), f, indent=4)
         if verbose:
-            logger.info(f"ConnectionConfig saved to {json_file}")
+            logger.info(f"ConnectionConfig saved to {json_file_path}")
 
 
 def load_connection_config_from_json_file(
@@ -294,3 +294,50 @@ def transactions_to_dataframe(
             logger.info(f"Saved to {save_to_csv}")
     if return_df:
         return df
+
+
+class RunConfig(ConnectionConfig):
+    """Helper object for managing long passes over the chain"""
+
+    start_height: int = 0
+    end_height: int = None
+    save_to_csv: Optional[Union[str, pathlib.Path]] = None
+    run_on_init: bool = True
+
+    # Inherits:
+    # url: str
+    # port: int
+    # verbose: bool = True
+    # num_workers: int = 16
+    # full_url: str = None
+    # json_rpc_client: JsonRpcClient = None
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        if self.run_on_init:
+            self.run()
+
+    def run(self):
+        if self.end_height is None:
+            self.end_height = get_block_count(self)
+        get_transactions_over_height_range(
+            connection_config=self,
+            start_height=self.start_height,
+            end_height=self.end_height,
+            verbose=True,
+            save_to_csv=self.save_to_csv,
+        )
+
+    def to_run_config_json_file(self, file_path: Union[str, pathlib.Path], verbose: bool = True):
+        with open(file_path, "w") as f:
+            json.dump(self.dict(), f, indent=4)
+        if verbose:
+            logger.info(f"Saved to {file_path}")
+
+
+def load_run_config_from_json_file(file_path: Union[str, pathlib.Path], verbose: bool = True) -> RunConfig:
+    with open(file_path, "r") as f:
+        run_config = RunConfig(**json.load(f))
+    if verbose:
+        logger.info(f"Loaded from {file_path}")
+    return run_config
