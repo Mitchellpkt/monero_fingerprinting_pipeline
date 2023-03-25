@@ -8,7 +8,7 @@ r = RunConfig(
     verbose=True,
     num_workers=16,
     start_height=2000000,
-    end_height=2000050,
+    end_height=2000032,
     save_to_csv="/home/user/isthmus_dev/test_output.csv",
     run_on_init=True,
 )

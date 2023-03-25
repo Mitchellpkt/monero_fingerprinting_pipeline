@@ -32,7 +32,7 @@ def main():
     # Instantiate JSON-RPC client
     if args.verbose:
         logger.info(f"... About to instantiate JSON-RPC client with URL {args.url}")
-    json_rpc_client = JsonRpcClient(args.url, args.port, args.verbose)
+    json_rpc_client = JsonRpcClient(url=args.url, port=args.port, verbose=args.verbose)
 
     # Get the latest block height
     if args.verbose:
