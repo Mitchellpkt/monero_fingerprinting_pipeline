@@ -226,12 +226,17 @@ def get_transactions_over_height_range_single_core(
     txs_hashes = []
     for height in range(start_height, end_height + 1):
         if verbose:
-            print(f"Processing block {height}", end="\r")
+            logger.info(f"Processing block {height}", end="\r")
         block = get_block(connection_config, height)
         if connection_config.sleep_for_rate_limiting_sec:
             time.sleep(connection_config.sleep_for_rate_limiting_sec)
         if "tx_hashes" in block and len(block["tx_hashes"]):
             txs_hashes.extend(block["tx_hashes"])
+
+    if verbose:
+        logger.info(
+            f"About to retrieve {len(txs_hashes)} transactions from blocks {start_height} to {end_height}"
+        )
 
     # If no batching, or batch > hashes, return in a single shot
     if not connection_config.transaction_batch_size or connection_config.transaction_batch_size >= len(
