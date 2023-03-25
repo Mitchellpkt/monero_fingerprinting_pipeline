@@ -128,7 +128,7 @@ def get_transactions_raw(
     decode_as_json: bool = True,
     prune: bool = True,
     split: bool = True,
-    *_,
+    **_,
 ) -> Dict[str, Any]:
     """
     Retrieve rawish transactions data from a Monero node.
