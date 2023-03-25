@@ -254,9 +254,10 @@ def get_transactions_over_height_range(
     height_range_iterables = [
         (x[0], x[-1])
         for x in np.array_split(range(start_height, end_height + 1), connection_config.num_workers)
+        if len(x)
     ]
 
-    with Pool(connection_config.num_workers) as p:
+    with Pool(min((connection_config.num_workers, len(height_range_iterables)))) as p:
         txs_data_nested: List[List[Dict[str, Any]]] = p.starmap(
             get_transactions_over_height_range_single_core,
             [
