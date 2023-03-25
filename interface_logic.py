@@ -9,6 +9,7 @@ import requests
 from loguru import logger
 from pydantic import BaseModel
 import pandas as pd
+import time
 
 
 @dataclass
@@ -62,6 +63,7 @@ class ConnectionConfig(BaseModel):
     port: int
     verbose: bool = True
     num_workers: int = 16
+    sleep_for_rate_limiting_sec: Optional[float] = None
 
     # Internally-managed
     full_url: str = None
@@ -225,6 +227,8 @@ def get_transactions_over_height_range_single_core(
         if verbose:
             print(f"Processing block {height}", end="\r")
         block = get_block(connection_config, height)
+        if connection_config.sleep_for_rate_limiting_sec:
+            time.sleep(connection_config.sleep_for_rate_limiting_sec)
         if "tx_hashes" in block and len(block["tx_hashes"]):
             txs_hashes.extend(block["tx_hashes"])
 

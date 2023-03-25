@@ -14,6 +14,7 @@ r = RunConfig(
     port=server_config.port,  # Replace these with your URL and port
     verbose=True,
     num_workers=16,
+    sleep_for_rate_limiting_sec=0.1,
     start_height=start_height,
     end_height=end_height,
     save_to_csv="/home/user/isthmus_dev/output/rs16_era.csv",
