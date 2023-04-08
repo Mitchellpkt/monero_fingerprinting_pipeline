@@ -2,6 +2,13 @@ import pandas as pd
 from typing import List, Set
 from loguru import logger
 
+delay_tolerance_blocks: float = 720
+unlock_time_high_cutoff: int = 100_000_000
+
+
+def get_len_extra_items(x: str) -> int:
+    return x.count(",") + 1
+
 
 def add_labels(df: pd.DataFrame, version: int = 1) -> pd.DataFrame:
     # Weak versioning for now; filters will be abstracted and version controlled later
@@ -11,17 +18,21 @@ def add_labels(df: pd.DataFrame, version: int = 1) -> pd.DataFrame:
     # Init
     initial_cols: Set[str] = set(df.keys())
 
-    # Unlock time logic
-    logger.info("Starting unlock time logic...")
-    df["anomalous_unlock_time_high"] = df["unlock_time"] > 1_400_000_000
-    ...
+    # Heuristic: Unlock times above 100,000,000 are atypical
+    df["anomalous_unlock_time_high"] = df["unlock_time"] > unlock_time_high_cutoff
 
-    # Fees logic
-    logger.info("Starting fees logic...")
+    # Heuristic: Unlock times more than 720 blocks under the current block height are atypical
+    # This could mean they were created with a low value or delayed
+    # Note that unlock_time==0 is OK, this is the standard wallet2 behavior if not specified
+    df["anomalous_unlock_time_low"] = df["unlock_time"] + delay_tolerance_blocks < df["block_height"]
+    df["anomalous_unlock_time_low"] = df["anomalous_unlock_time_low"] & (df["unlock_time"] != 0)
+
+    # Heuristic: fees should not be 0
     df["anomalous_fee_zero"] = df["txn_fee_atomic"] == 0
-    ...
 
-    # etc..
+    # Heuristic: len(tx_extra) > 1500 [in units of list length] is atypical
+    df["len_extra"] = df["extra"].apply(get_len_extra_items)
+    df["anomalous_extra_very_long"] = df["len_extra"] > 1500
 
     # Finalize
     logger.info("Finalizing...")
