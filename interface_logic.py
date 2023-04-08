@@ -279,7 +279,7 @@ def get_transactions_over_height_range_single_core(
     ):
         return extract_transactions_data(get_transactions_raw(txs_hashes, **connection_config.dict()))
 
-    # Use np.array_split to chunk up the hashes into batches
+    # Chunk up the hashes into batches
     batch_size: int = connection_config.transaction_batch_size
     txs_hash_batches: List[List[str]] = [
         txs_hashes[i : i + batch_size] for i in range(0, len(txs_hashes), batch_size)
