@@ -39,9 +39,12 @@ def add_labels(df: pd.DataFrame, version: int = 1) -> pd.DataFrame:
     df["len_extra"] = df["extra"].apply(get_len_extra_items)
     df["anomalous_extra_very_long"] = df["len_extra"] > 1500
 
+    # Analyze rings
+    logger.info("Analyzing rings ...")
+
     # Finalize
     logger.info("Finalizing...")
-    cols_diff: List[str] = list(set(df.keys()) - initial_cols)
+    cols_diff: List[str] = list(set(df.keys()) - initial_cols - {"len_extra"})
     df["any_anomaly"] = df[cols_diff].any(axis=1)
 
     # Print some stats
