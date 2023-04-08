@@ -205,8 +205,10 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
         for vout in json_data["vout"]:
             tagged_key = vout["target"].get("tagged_key", {})
             view_tag = tagged_key.get("view_tag") if isinstance(tagged_key, dict) else None
-
-            output_data.append({"amount": vout["amount"], "view_tag": view_tag})
+            stealth_address = tagged_key.get("key") if isinstance(tagged_key, dict) else None
+            output_data.append(
+                {"amount": vout["amount"], "view_tag": view_tag, "stealth_address": stealth_address}
+            )
 
         extracted_data.append(
             {
