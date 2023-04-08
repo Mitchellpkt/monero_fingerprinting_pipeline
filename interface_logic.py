@@ -201,13 +201,24 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
             rct_dict: Dict[str, Any] = {}
 
         output_data = []
-
         for vout in json_data["vout"]:
             tagged_key = vout["target"].get("tagged_key", {})
             view_tag = tagged_key.get("view_tag") if isinstance(tagged_key, dict) else None
             stealth_address = tagged_key.get("key") if isinstance(tagged_key, dict) else None
             output_data.append(
                 {"amount": vout["amount"], "view_tag": view_tag, "stealth_address": stealth_address}
+            )
+
+        input_data = []
+        for vin in json_data["vin"]:
+            key_offsets = vin["key"]["key_offsets"]
+            ring_member_indices = np.cumsum(key_offsets).tolist()
+            input_data.append(
+                {
+                    "k_image": vin["key"]["k_image"],
+                    "key_offsets": key_offsets,
+                    "ring_member_indices": ring_member_indices,
+                }
             )
 
         extracted_data.append(
@@ -221,6 +232,7 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
                 "num_outputs": len(json_data["vout"]),
                 "extra": json_data["extra"],
                 "outputs": output_data,
+                "inputs": input_data,
                 **rct_dict,
             }
         )
