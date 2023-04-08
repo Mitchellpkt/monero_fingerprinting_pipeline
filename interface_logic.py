@@ -2,7 +2,7 @@ import json
 import pathlib
 from dataclasses import dataclass
 from multiprocessing import Pool, cpu_count
-from typing import Any, Dict, List, Optional, Union, Tuple
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 import requests
@@ -180,6 +180,8 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
         - txn_fee_atomic
         - rct_type
         - extra
+        - inputs
+        - outputs
     """
     transactions = json_data["txs"]
     extracted_data = []
@@ -190,7 +192,6 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
         block_timestamp = tx["block_timestamp"]
         json_data = json.loads(tx["as_json"])
 
-        # RingCT transactions have a different structure, so we pull those fields out first if present
         if "rct_signatures" in json_data:
             rct_dict: Dict[str, Any] = {
                 "txn_fee_atomic": json_data["rct_signatures"]["txnFee"],
@@ -198,6 +199,14 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
             }
         else:
             rct_dict: Dict[str, Any] = {}
+
+        output_data = []
+
+        for vout in json_data["vout"]:
+            tagged_key = vout["target"].get("tagged_key", {})
+            view_tag = tagged_key.get("view_tag") if isinstance(tagged_key, dict) else None
+
+            output_data.append({"amount": vout["amount"], "view_tag": view_tag})
 
         extracted_data.append(
             {
@@ -209,6 +218,7 @@ def extract_transactions_data(json_data: Dict[str, any]) -> List[Dict[str, Any]]
                 "num_inputs": len(json_data["vin"]),
                 "num_outputs": len(json_data["vout"]),
                 "extra": json_data["extra"],
+                "outputs": output_data,
                 **rct_dict,
             }
         )
