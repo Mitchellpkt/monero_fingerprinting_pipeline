@@ -6,7 +6,7 @@ import server_config
 from loguru import logger
 import time
 
-logger.info("Starting ring size 16 era run...")
+logger.info("Starting Sept Y21 to Apr Y23 run...")
 output_file_path: str = f"/home/user/isthmus_dev/output/rs_S21_to_A23{int(time.time())}.csv"
 tic: float = time.perf_counter()
 r = RunConfig(
@@ -14,7 +14,7 @@ r = RunConfig(
     port=server_config.port,  # Replace these with your URL and port
     verbose=True,
     num_workers=16,
-    sleep_for_rate_limiting_sec=0.01,
+    sleep_for_rate_limiting_sec=0.05,
     transaction_batch_size=250,
     start_height=start_height,
     end_height=end_height,
