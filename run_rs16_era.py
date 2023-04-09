@@ -1,5 +1,5 @@
 start_height: int = 2688888
-end_height: int = 2693928
+end_height: int = 2860073
 
 from interface_logic import RunConfig
 import server_config
