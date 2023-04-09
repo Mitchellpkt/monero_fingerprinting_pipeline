@@ -5,4 +5,4 @@ numpy
 pandas
 tqdm
 isthmuslib==0.0.99
-jupytera
+jupyter
