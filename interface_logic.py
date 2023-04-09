@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import pandas as pd
 import time
 from tqdm.auto import tqdm
+import csv
 
 
 @dataclass
@@ -349,6 +350,7 @@ def get_transactions_over_height_range(
 def transactions_to_dataframe(
     txs_data: List[Dict[str, Any]],
     save_to_csv: Optional[Union[str, pathlib.Path]] = None,
+    buffer_size: int = 64 * 1024,
     verbose: bool = True,
     return_df: bool = True,
 ) -> Optional[pd.DataFrame]:
@@ -362,10 +364,14 @@ def transactions_to_dataframe(
     """
     df: pd.DataFrame = pd.DataFrame(txs_data)
     if save_to_csv is not None:
-        pathlib.Path(save_to_csv).parent.mkdir(parents=True, exist_ok=True)
-        df.to_csv(save_to_csv, index=False)
-        if verbose:
-            logger.info(f"Saved to {save_to_csv}")
+        with open(save_to_csv, "w", buffering=buffer_size, newline="") as csvfile:
+            if verbose:
+                logger.info(f"Saving to CSV file: {save_to_csv}")
+            csv_writer = csv.writer(csvfile)
+            csv_writer.writerow(df.columns)
+            for index, row in df.iterrows():
+                csv_writer.writerow(row)
+
     if return_df:
         return df
 
