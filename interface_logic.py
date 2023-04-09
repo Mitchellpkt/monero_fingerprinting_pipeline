@@ -262,7 +262,11 @@ def get_transactions_over_height_range_single_core(
     for height in p_blocks:
         if verbose:
             logger.info(f"Processing block {height}", end="\r")
-        block = get_block(connection_config, height)
+        try:
+            block = get_block(connection_config, height)
+        except Exception as e:
+            logger.error(f"Error retrieving block {height}: {e}")
+            raise Exception(f"Error retrieving block {height}: {e}")
         if connection_config.sleep_for_rate_limiting_sec:
             time.sleep(connection_config.sleep_for_rate_limiting_sec)
         if "tx_hashes" in block and len(block["tx_hashes"]):
