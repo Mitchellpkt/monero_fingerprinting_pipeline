@@ -310,6 +310,7 @@ def get_transactions_over_height_range(
     end_height: int,
     verbose: bool = True,
     save_to_csv: Optional[Union[str, pathlib.Path]] = None,
+    save_to_feather: Optional[Union[str, pathlib.Path]] = None,
 ) -> List[Dict[str, Any]]:
     """
     Retrieve rawish transactions data from a Monero node over a range of block heights.
@@ -344,6 +345,10 @@ def get_transactions_over_height_range(
         transactions_to_dataframe(
             transactions, save_to_csv=save_to_csv, verbose=verbose, return_df=False
         )  # This saves it to a CSV file
+    if save_to_feather is not None:
+        transactions_to_dataframe(
+            transactions, save_to_csv=save_to_feather, verbose=verbose, return_df=False
+        )  # This saves it to a feather file
     return transactions
 
 
@@ -362,7 +367,25 @@ def transactions_to_dataframe(
     :param verbose: whether to display a progress bar
     :return: Pandas DataFrame
     """
-    df: pd.DataFrame = pd.DataFrame(txs_data)
+    # Define the data types for each column
+    column_dtypes = {
+        "tx_hash": str,
+        "block_height": "uint32",
+        "block_timestamp": "uint64",
+        "version": "category",
+        "unlock_time": "uint64",
+        "num_inputs": "uint16",
+        "num_outputs": "uint16",
+        # 'extra': object,  # Specify the data type for the 'extra' column
+        # 'outputs': object,  # Specify the data type for the 'outputs' column
+        # 'inputs': object,  # Specify the data type for the 'inputs' column
+        "txn_fee_atomic": "uint64",
+        "rct_type": "category",
+    }
+
+    # Create the DataFrame with the specified data types
+    df: pd.DataFrame = pd.DataFrame(txs_data, dtype=column_dtypes)
+
     if save_to_csv is not None:
         with open(save_to_csv, "w", buffering=buffer_size, newline="") as csvfile:
             if verbose:
@@ -382,6 +405,7 @@ class RunConfig(ConnectionConfig):
     start_height: int = 0
     end_height: int = None
     save_to_csv: Optional[Union[str, pathlib.Path]] = None
+    save_to_feather: Optional[Union[str, pathlib.Path]] = None
     run_on_init: bool = True
 
     # Inherits:
@@ -406,6 +430,7 @@ class RunConfig(ConnectionConfig):
             end_height=self.end_height,
             verbose=True,
             save_to_csv=self.save_to_csv,
+            save_to_feather=self.save_to_feather,
         )
 
     def to_run_config_json_file(self, file_path: Union[str, pathlib.Path], verbose: bool = True):
