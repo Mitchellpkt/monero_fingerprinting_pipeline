@@ -369,7 +369,7 @@ def transactions_to_dataframe(
     """
     # Define the data types for each column
     column_dtypes = {
-        "tx_hash": str,
+        "tx_hash": "str",
         "block_height": "uint32",
         "block_timestamp": "uint64",
         "version": "category",
