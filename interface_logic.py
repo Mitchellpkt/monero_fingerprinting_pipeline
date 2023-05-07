@@ -383,8 +383,8 @@ def transactions_to_dataframe(
         "rct_type": "category",
     }
 
-    # Create the DataFrame with the specified data types
-    df: pd.DataFrame = pd.DataFrame(txs_data, dtype=column_dtypes)
+    df = pd.DataFrame(txs_data)
+    df = df.astype(column_dtypes)
 
     if save_to_csv is not None:
         with open(save_to_csv, "w", buffering=buffer_size, newline="") as csvfile:
