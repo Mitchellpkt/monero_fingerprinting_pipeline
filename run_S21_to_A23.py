@@ -7,7 +7,7 @@ from loguru import logger
 import time
 
 logger.info("Starting Sept Y21 to Apr Y23 run...")
-output_file_path: str = f"/home/user/isthmus_dev/output/rs_S21_to_A23{int(time.time())}.csv"
+output_file_path: str = f"/home/user/isthmus_dev/monero_fingerprinting_pipeline/output/rs_S21_to_A23{int(time.time())}.csv"
 tic: float = time.perf_counter()
 r = RunConfig(
     url=server_config.url,  # Replace these with your URL and port

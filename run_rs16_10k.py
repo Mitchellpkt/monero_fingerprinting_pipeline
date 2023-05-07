@@ -7,7 +7,7 @@ from loguru import logger
 import time
 
 logger.info(f"Starting ring size 16 era run 10k ({start_height} to {end_height})")
-output_file_path: str = f"/home/user/isthmus_dev/output/rs16_era_{int(time.time())}.feather"
+output_file_path: str = f"/home/user/isthmus_dev/monero_fingerprinting_pipeline/output/rs16_era_10k_{int(time.time())}.feather"
 tic: float = time.perf_counter()
 r = RunConfig(
     url=server_config.url,  # Replace these with your URL and port
