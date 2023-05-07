@@ -342,10 +342,12 @@ def get_transactions_over_height_range(
         )
     transactions: List[Dict[str, Any]] = [tx for txs in txs_data_nested for tx in txs]
     if save_to_csv is not None:
+        pathlib.Path(save_to_csv).parent.mkdir(parents=True, exist_ok=True)
         transactions_to_dataframe(
             transactions, save_to_csv=save_to_csv, verbose=verbose, return_df=False
         )  # This saves it to a CSV file
     if save_to_feather is not None:
+        pathlib.Path(save_to_feather).parent.mkdir(parents=True, exist_ok=True)
         transactions_to_dataframe(
             transactions, save_to_csv=save_to_feather, verbose=verbose, return_df=False
         )  # This saves it to a feather file
