@@ -360,6 +360,7 @@ def transactions_to_dataframe(
     buffer_size: int = 64 * 1024,
     verbose: bool = True,
     return_df: bool = True,
+    behavior_on_non_ringct: str = "ignore",
 ) -> Optional[pd.DataFrame]:
     """
     Convert transaction data to a Pandas DataFrame.
@@ -393,6 +394,10 @@ def transactions_to_dataframe(
         print(nan_rows.iloc[0])
     else:
         print("No rows with NaN found.")
+
+    # drop rows with NaNs if set to ignore non RingCT txns
+    if behavior_on_non_ringct.lower() == "ignore":
+        df = df.dropna()
 
     df = df.astype(column_dtypes)
 
