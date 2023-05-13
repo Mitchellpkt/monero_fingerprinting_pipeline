@@ -386,6 +386,14 @@ def transactions_to_dataframe(
     }
 
     df = pd.DataFrame(txs_data)
+
+    # Debug: check for NaNs
+    nan_rows = df[df.isnull().any(axis=1)]
+    if not nan_rows.empty:
+        print(nan_rows.iloc[0])
+    else:
+        print("No rows with NaN found.")
+
     df = df.astype(column_dtypes)
 
     if save_to_csv is not None:
