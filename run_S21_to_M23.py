@@ -1,6 +1,6 @@
 start_height: int = 2_440_000  # 2021-09-01
 end_height: int = 2_885_000  # 2023-05-13
-batch_size_blocks: int = 10_000
+batch_size_blocks: int = 5_000  # in the ballpark of 1 week of blocks
 
 from interface_logic import RunConfig
 import server_config
