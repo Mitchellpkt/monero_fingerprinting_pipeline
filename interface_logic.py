@@ -414,6 +414,7 @@ def transactions_to_dataframe(
         elif save_to_any.endswith(".feather"):
             if verbose:
                 logger.info(f"Saving to feather file: {save_to_any}")
+            df.reset_index(drop=True, inplace=True)
             df.to_feather(save_to_any)
 
     if return_df:
