@@ -35,4 +35,4 @@ while current_height < end_height:
 
 logger.info(f"\nDone!")
 logger.info(f"Took {time.perf_counter() - tic:.2f} seconds to run over {end_height-start_height} blocks.")
-logger.info(f"Output saved to {output_file_path}")
+logger.info(f"Last output saved to {output_file_path}")  # noqa - only undefined if loop never runs

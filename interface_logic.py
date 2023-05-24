@@ -344,19 +344,19 @@ def get_transactions_over_height_range(
     if save_to_csv is not None:
         pathlib.Path(save_to_csv).parent.mkdir(parents=True, exist_ok=True)
         transactions_to_dataframe(
-            transactions, save_to_csv=save_to_csv, verbose=verbose, return_df=False
+            transactions, save_to_any=save_to_csv, verbose=verbose, return_df=False
         )  # This saves it to a CSV file
     if save_to_feather is not None:
         pathlib.Path(save_to_feather).parent.mkdir(parents=True, exist_ok=True)
         transactions_to_dataframe(
-            transactions, save_to_csv=save_to_feather, verbose=verbose, return_df=False
+            transactions, save_to_any=save_to_feather, verbose=verbose, return_df=False
         )  # This saves it to a feather file
     return transactions
 
 
 def transactions_to_dataframe(
     txs_data: List[Dict[str, Any]],
-    save_to_csv: Optional[Union[str, pathlib.Path]] = None,
+    save_to_any: Optional[Union[str, pathlib.Path]] = None,
     buffer_size: int = 64 * 1024,
     verbose: bool = True,
     return_df: bool = True,
@@ -366,7 +366,7 @@ def transactions_to_dataframe(
     Convert transaction data to a Pandas DataFrame.
 
     :param txs_data: transaction data (list of dicts, 1 element per transaction)
-    :param save_to_csv: optional path to save the data as a CSV file
+    :param save_to_any: optional path to save the data as a CSV file
     :param verbose: whether to display a progress bar
     :return: Pandas DataFrame
     """
@@ -401,14 +401,20 @@ def transactions_to_dataframe(
 
     df = df.astype(column_dtypes)
 
-    if save_to_csv is not None:
-        with open(save_to_csv, "w", buffering=buffer_size, newline="") as csvfile:
+    if save_to_any is not None:
+        # check if save_to_any is a CSV file
+        if save_to_any.endswith(".csv"):
+            with open(save_to_any, "w", buffering=buffer_size, newline="") as csvfile:
+                if verbose:
+                    logger.info(f"Saving to CSV file: {save_to_any}")
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerow(df.columns)
+                for index, row in df.iterrows():
+                    csv_writer.writerow(row)
+        elif save_to_any.endswith(".feather"):
             if verbose:
-                logger.info(f"Saving to CSV file: {save_to_csv}")
-            csv_writer = csv.writer(csvfile)
-            csv_writer.writerow(df.columns)
-            for index, row in df.iterrows():
-                csv_writer.writerow(row)
+                logger.info(f"Saving to feather file: {save_to_any}")
+            df.to_feather(save_to_any)
 
     if return_df:
         return df
