@@ -132,5 +132,6 @@ if __name__ == "__main__":
     logger.info(f"Concatenating flattened files in {original_dir}/flattened...")
     df: pd.DataFrame = concatenate_flattened_files(Path(original_dir) / "flattened")
     final_output_path: Path = Path(original_dir) / "flattened" / "all" / "transactions_flattened.feather"
+    final_output_path.mkdir(parents=True, exist_ok=True)
     logger.info(f"Saving concatenated DataFrame to {final_output_path}...")
     df.to_feather(final_output_path)
