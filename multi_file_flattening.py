@@ -19,8 +19,11 @@ def flatten_ring_members(row: pd.Series) -> pd.Series:
     :return: Row with flattened ring members
     :rtype: pd.Series
     """
-    input_str: str = row["inputs"].replace("'", '"')
-    inputs_data: List[Dict[str, Any]] = json.loads(input_str)
+    if isinstance(row["inputs"], str):
+        input_str: str = row["inputs"].replace("'", '"')
+        inputs_data: List[Dict[str, Any]] = json.loads(input_str)
+    else:
+        inputs_data = row["inputs"]
     flat_rings: List[int] = []
     for i_ in inputs_data:
         flat_rings.extend(i_["ring_member_indices"])
@@ -43,7 +46,7 @@ def process_file(file: Path, flattened_dir: Path, verbose: bool = True) -> None:
         logger.info(f"Processing file {file}")
     txns: VectorMultiset = VectorMultiset().read_any(file, inplace=False)
     txns.data["flat_ring_members"] = None
-    txns.data = txns.data.apply(flatten_ring_members, axis=1)
+    txns.data = txns.data.apply(flatten_ring_members, axis=1, raw=False)
     flattened_file = flattened_dir / f"{file.stem}_flattened.feather"
     columns_to_keep = [
         "tx_hash",
@@ -122,8 +125,8 @@ def concatenate_flattened_files(target_dir: Union[Path, str], verbose: bool = Tr
 
 
 if __name__ == "__main__":
-    num_workers: int = 8
-    original_dir: str = "/home/bird/data_drive/monero/output_raw_etl"
+    num_workers: int = 1
+    original_dir: str = "/home/m/Projects/GitHub/monero_fingerprinting_pipeline/output"
     logger.info(f"Flattening files in {original_dir}...")
     flatten_files(original_dir, num_workers=num_workers)
     logger.info(f"Concatenating flattened files in {original_dir}/flattened...")
