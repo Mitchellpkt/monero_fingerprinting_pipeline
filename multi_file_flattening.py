@@ -125,12 +125,12 @@ def concatenate_flattened_files(target_dir: Union[Path, str], verbose: bool = Tr
 
 
 if __name__ == "__main__":
-    num_workers: int = 1
+    num_workers: int = 60
     original_dir: str = "/home/m/Projects/GitHub/monero_fingerprinting_pipeline/output"
     logger.info(f"Flattening files in {original_dir}...")
     flatten_files(original_dir, num_workers=num_workers)
     logger.info(f"Concatenating flattened files in {original_dir}/flattened...")
-    df: pd.Dataframe = concatenate_flattened_files(Path(original_dir) / "flattened")
+    df: pd.DataFrame = concatenate_flattened_files(Path(original_dir) / "flattened")
     final_output_path: Path = Path(original_dir) / "flattened" / "all" / "transactions_flattened.feather"
     logger.info(f"Saving concatenated DataFrame to {final_output_path}...")
     df.to_feather(final_output_path)
