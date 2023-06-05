@@ -2,10 +2,10 @@
 
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 import pandas as pd
-from isthmuslib import VectorMultiset
+from isthmuslib import VectorMultiset, process_queue
 from tqdm.auto import tqdm
 from loguru import logger
 
@@ -28,7 +28,42 @@ def flatten_ring_members(row: pd.Series) -> pd.Series:
     return row
 
 
-def flatten_files(target_dir: Union[Path, str], verbose: bool = True) -> None:
+def process_file(file: Path, flattened_dir: Path, verbose: bool = True) -> None:
+    """
+    Function to process a single file.
+
+    :param file: File path
+    :type file: Path
+    :param flattened_dir: Directory path for flattened files
+    :type flattened_dir: Path
+    :param verbose: Flag to print messages, defaults to True
+    :type verbose: bool, optional
+    """
+    if verbose:
+        logger.info(f"Processing file {file}")
+    txns: VectorMultiset = VectorMultiset().read_any(file, inplace=False)
+    txns.data["flat_ring_members"] = None
+    txns.data = txns.data.apply(flatten_ring_members, axis=1)
+    flattened_file = flattened_dir / f"{file.stem}_flattened.feather"
+    columns_to_keep = [
+        "tx_hash",
+        "block_height",
+        "block_timestamp",
+        "unlock_time",
+        "num_inputs",
+        "num_outputs",
+        "txn_fee_atomic",
+        "flat_ring_members",
+    ]
+    txns.data = txns.data[columns_to_keep]
+    txns.data.to_feather(flattened_file)
+    if verbose:
+        print(f"Processed and saved file {flattened_file}")
+
+
+def flatten_files(
+    target_dir: Union[Path, str], verbose: bool = True, num_workers: Optional[int] = None
+) -> None:
     """
     Function to flatten files.
 
@@ -45,26 +80,16 @@ def flatten_files(target_dir: Union[Path, str], verbose: bool = True) -> None:
     flattened_dir.mkdir(parents=True, exist_ok=True)
 
     feather_files = list(target_dir.glob("*.feather"))
+    iterable: List[Dict[str, Any]] = [
+        {"file": file, "flattened_dir": flattened_dir, "verbose": verbose} for file in feather_files
+    ]
 
-    for file in tqdm(feather_files, desc="Flattening files", mininterval=1):
-        txns: VectorMultiset = VectorMultiset().read_any(file, inplace=False)
-        txns.data["flat_ring_members"] = None
-        txns.data = txns.data.apply(flatten_ring_members, axis=1)
-        flattened_file = flattened_dir / f"{file.stem}_flattened.feather"
-        columns_to_keep = [
-            "tx_hash",
-            "block_height",
-            "block_timestamp",
-            "unlock_time",
-            "num_inputs",
-            "num_outputs",
-            "txn_fee_atomic",
-            "flat_ring_members",
-        ]
-        txns.data = txns.data[columns_to_keep]
-        txns.data.to_feather(flattened_file)
-        if verbose:
-            print(f"Processed and saved file {flattened_file}")
+    process_queue(
+        func=process_file,
+        iterable=iterable,
+        pool_function="kwargsmap",
+        num_workers=num_workers,
+    )
 
 
 def concatenate_flattened_files(target_dir: Union[Path, str], verbose: bool = True) -> pd.DataFrame:
@@ -97,9 +122,10 @@ def concatenate_flattened_files(target_dir: Union[Path, str], verbose: bool = Tr
 
 
 if __name__ == "__main__":
+    num_workers: int = 8
     original_dir: str = "/home/bird/data_drive/monero/output_raw_etl"
     logger.info(f"Flattening files in {original_dir}...")
-    flatten_files(original_dir)
+    flatten_files(original_dir, num_workers=num_workers)
     logger.info(f"Concatenating flattened files in {original_dir}/flattened...")
     df: pd.Dataframe = concatenate_flattened_files(Path(original_dir) / "flattened")
     final_output_path: Path = Path(original_dir) / "flattened" / "all" / "transactions_flattened.feather"
